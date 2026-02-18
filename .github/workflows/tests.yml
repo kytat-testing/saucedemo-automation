@@ -7,8 +7,8 @@ on:
     branches: [ main ]
 
 jobs:
+
   smoke-tests:
-    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
 
     steps:
@@ -27,16 +27,29 @@ jobs:
       - name: Run Smoke Suite
         run: pytest -m smoke --alluredir=allure-results
 
-      - name: Upload Allure Results
+      - name: Install Allure CLI
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y default-jre wget
+          wget https://github.com/allure-framework/allure2/releases/latest/download/allure-2.29.0.tgz
+          tar -zxvf allure-2.29.0.tgz
+          sudo mv allure-2.29.0 /opt/allure
+          sudo ln -s /opt/allure/bin/allure /usr/bin/allure
+
+      - name: Generate Allure HTML
+        run: allure generate allure-results --clean -o allure-report
+
+      - name: Upload Smoke Allure HTML
         uses: actions/upload-artifact@v4
         with:
-          name: smoke-allure-results
-          path: allure-results
+          name: smoke-allure-html
+          path: allure-report
 
 
   regression-tests:
-    if: github.event_name == 'push'
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    needs: smoke-tests
 
     steps:
       - uses: actions/checkout@v4
@@ -54,8 +67,20 @@ jobs:
       - name: Run Regression Suite
         run: pytest -m regression --alluredir=allure-results
 
-      - name: Upload Allure Results
+      - name: Install Allure CLI
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y default-jre wget
+          wget https://github.com/allure-framework/allure2/releases/latest/download/allure-2.29.0.tgz
+          tar -zxvf allure-2.29.0.tgz
+          sudo mv allure-2.29.0 /opt/allure
+          sudo ln -s /opt/allure/bin/allure /usr/bin/allure
+
+      - name: Generate Allure HTML
+        run: allure generate allure-results --clean -o allure-report
+
+      - name: Upload Regression Allure HTML
         uses: actions/upload-artifact@v4
         with:
-          name: regression-allure-results
-          path: allure-results
+          name: regression-allure-html
+          path: allure-report
